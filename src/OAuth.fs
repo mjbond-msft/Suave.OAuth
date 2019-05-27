@@ -27,12 +27,12 @@ exception private OAuthException of string
 /// <summary>
 /// Result type for successive login callback.
 /// </summary>
-type LoginData = {ProviderName: string; Id: string; Name: string; AccessToken: string; ProviderData: Map<string,obj>}
-type FailureData = {Code: int; Message: string; Info: obj}
+type LoginData = { ProviderName: string; Id: string; Name: string; AccessToken: string; ProviderData: Map<string,obj> }
+type FailureData = { Code: int; Message: string; Info: obj }
 
 let EmptyConfig =
-    {authorize_uri = ""; exchange_token_uri = ""; request_info_uri = ""; client_id = ""; client_secret = "";
-    scopes = ""; token_response_type = FormEncode; customize_req = ignore}
+    {   authorize_uri = ""; exchange_token_uri = ""; request_info_uri = ""; client_id = ""; client_secret = "";
+        scopes = ""; token_response_type = FormEncode; customize_req = ignore }
 
 /// <summary>
 /// Default (incomplete) oauth provider settings.
@@ -40,25 +40,24 @@ let EmptyConfig =
 let private providerConfigs =
     Map.empty
     |> Map.add "google"
-        {EmptyConfig with
+        { EmptyConfig with
             authorize_uri = "https://accounts.google.com/o/oauth2/auth"
             exchange_token_uri = "https://www.googleapis.com/oauth2/v3/token"
             request_info_uri = "https://www.googleapis.com/oauth2/v1/userinfo"
             scopes = "profile"
-            token_response_type = JsonEncode
-            }
+            token_response_type = JsonEncode }
     |> Map.add "github"
-        {EmptyConfig with
+        { EmptyConfig with
             authorize_uri = "https://github.com/login/oauth/authorize"
             exchange_token_uri = "https://github.com/login/oauth/access_token"
             request_info_uri = "https://api.github.com/user"
-            scopes = ""}
+            scopes = "" }
     |> Map.add "facebook"
-        {EmptyConfig with
+        { EmptyConfig with
             authorize_uri = "https://www.facebook.com/dialog/oauth"
             exchange_token_uri = "https://graph.facebook.com/oauth/access_token"
             request_info_uri = "https://graph.facebook.com/me"
-            scopes = ""}
+            scopes = "" }
 
 /// <summary>
 /// Allows to completely define provider configs.
