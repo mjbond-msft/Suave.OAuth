@@ -121,17 +121,36 @@ module private impl =
                     "grant_type", "authorization_code"
                 ]
 
+                // The following functions are needed for GitHub since client_id and client_secret are not allowed as query parameters: https://developer.github.com/changes/2020-02-10-deprecating-auth-through-query-param
+                let reformatUriForGitHub =
+                  if provider_key.Equals("github") && config.exchange_token_uri.StartsWith("https://") then                    
+                    sprintf "https://%s:%s@%s" config.client_id config.client_secret config.exchange_token_uri.["https://".Length..]
+                  else
+                    config.exchange_token_uri
+
+                let filterForGitHub =
+                    List.filter(fun (k, _) -> (not (provider_key.Equals("github")) || (not (k.Equals("client_id")) && not (k.Equals("client_secret")))))
+
                 async {
-                    let! response = parms |> util.formEncode |> util.asciiEncode |> HttpCli.post config.exchange_token_uri config.customize_req
+                    
+                    let! response = parms |> filterForGitHub |> util.formEncode |> util.asciiEncode |> HttpCli.post reformatUriForGitHub config.customize_req
                     response |> printfn "Auth response is %A"        // TODO log
 
                     let access_token = response |> extractToken
 
                     if Option.isNone access_token then
-                        raise (OAuthException "failed to extract access token")
+                      raise (OAuthException "failed to extract access token")
+                    
+                    let access_token = Option.get access_token
 
-                    let uri = config.request_info_uri + "?" + (["access_token", Option.get access_token] |> util.formEncode)
-                    let! response = HttpCli.get uri config.customize_req
+                    let (uri, auth_token) = 
+                      // access_token is not allowed as a query parameter for GitHub: https://developer.github.com/changes/2020-02-10-deprecating-auth-through-query-param
+                      if (provider_key.Equals("github")) then 
+                        (config.request_info_uri, access_token)
+                      else
+                        (config.request_info_uri + "?" + (["access_token", access_token] |> util.formEncode), "")
+
+                    let! response = HttpCli.get uri auth_token config.customize_req
                     response |> printfn "/user response %A"        // TODO log
 
                     let user_info:Map<string,obj> = response |> util.parseJsObj
@@ -142,7 +161,7 @@ module private impl =
 
                     return! fnSuccess
                         { ProviderName = provider_key;
-                          Id = user_id; Name = user_name; AccessToken = Option.get access_token;
+                          Id = user_id; Name = user_name; AccessToken = access_token;
                           ProviderData = user_info} ctx
                 }
         )

@@ -5,11 +5,14 @@ open System.Net
 
 type DefineRequest = HttpWebRequest -> unit
 
-let send (url : string) meth (define : DefineRequest) = 
+let send (url: string) (authToken: string) meth (define : DefineRequest) = 
     async { 
         let request = WebRequest.Create(url) :?> HttpWebRequest
         request.Method <- meth
         request.UserAgent <- "suave app"    // this line is required for github auth
+
+        if not (String.isEmpty(authToken)) then
+          request.Headers.Add("Authorization", sprintf "token %s" authToken)
 
         do define request
 
@@ -20,8 +23,8 @@ let send (url : string) meth (define : DefineRequest) =
         return reader.ReadToEnd()
     }
 
-let post (url : string) (define : DefineRequest) (data : byte []) = 
-    send url "POST"
+let post (url: string) (define : DefineRequest) (data : byte []) = 
+    send url "" "POST"
         (fun request ->
         request.ContentType <- "application/x-www-form-urlencoded"
         request.ContentLength <- int64 data.Length
@@ -34,4 +37,4 @@ let post (url : string) (define : DefineRequest) (data : byte []) =
 
 )
 
-let get (url : string) = send url "GET"
+let get (url : string) (authToken: string) = send url authToken "GET"
